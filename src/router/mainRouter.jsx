@@ -4,6 +4,7 @@ import Layout from "../components/Layout/Layout";
 import Spinners from "../components/reuse/Spinner";
 import ProtectedRoute from "./protectedRoute";
 import AuthRouter from "./AuthRouter";
+import ScrollToTop from "../components/reuse/ScrollToTop";
 // eslint-disable-next-line no-unused-vars
 const withSuspense = (Component) => (
   <Suspense fallback={<Spinners />}>
@@ -30,6 +31,7 @@ const routesConfig = [
     element: (
       <ProtectedRoute>
         <Layout />,
+        <ScrollToTop/>
       </ProtectedRoute>
     ),
     children: [
