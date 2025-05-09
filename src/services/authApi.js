@@ -1,7 +1,8 @@
 import axios from "axios";
 
 
-const API_BASE_URL = "http://localhost:4000/api/v1/auth"
+// const API_BASE_URL = "http://localhost:4000/api/v1/auth"
+const API_BASE_URL = "https://medzionpharma-api.onrender.com/api/v1/auth"
 export const api = axios.create({
     baseURL: API_BASE_URL,
     withCredentials:true
