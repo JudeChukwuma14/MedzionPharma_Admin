@@ -7,21 +7,44 @@ import {
   fetchProducts,
   removeProduct,
   resetProductState,
-  updateProduct, // Assuming you have an updateProduct action in your slice
+  updateProduct,
 } from "../util/slices/productSlice";
+import { useForm } from "react-hook-form";
 
 function ProductList() {
   const dispatch = useDispatch();
   const { products, loading, error, success } = useSelector(
     (state) => state.product
   );
+  const { user, token, isAuthenticated } = useSelector((state) => state.user);
 
+  if (!isAuthenticated || user?.role !== "admin") {
+    navigate("/login");
+    toast.error("You must be an admin to manage products");
+    return null;
+  }
   const [filterOpen, setFilterOpen] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState("");
   const [selectedBrand, setSelectedBrand] = useState("");
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState(null);
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [deleteProductId, setDeleteProductId] = useState(null);
 
+  const {
+    register,
+    handleSubmit,
+    formState: { errors },
+    reset,
+  } = useForm({
+    defaultValues: {
+      name: "",
+      category: "",
+      brandName: "",
+      stock: 0,
+      price: 0.0,
+    },
+  });
   // Fetch products on mount
   useEffect(() => {
     dispatch(fetchProducts());
@@ -31,7 +54,8 @@ function ProductList() {
   useEffect(() => {
     if (success) {
       dispatch(resetProductState());
-      setIsModalOpen(false); // Close modal after successful update
+      setIsModalOpen(false);
+      setIsDeleteModalOpen(false);
     }
     if (error) {
       toast.error(error);
@@ -39,6 +63,18 @@ function ProductList() {
     }
   }, [success, error, dispatch]);
 
+  // handle edit product
+  useEffect(() => {
+    if (selectedProduct) {
+      reset({
+        name: selectedProduct.name,
+        category: selectedProduct.category,
+        brandName: selectedProduct.brandName,
+        stock: selectedProduct.stock,
+        price: selectedProduct.price,
+      });
+    }
+  }, [selectedProduct, reset]);
   // Define categories and brands dynamically from products
   const categories = [
     ...new Set(products.map((product) => product.category)),
@@ -54,11 +90,23 @@ function ProductList() {
     return true;
   });
 
-  // Handle product deletion
-  const handleDelete = (productId) => {
-    if (window.confirm("Are you sure you want to delete this product?")) {
-      dispatch(removeProduct(productId));
+  const handleDeleteClick = (productId) => {
+    setDeleteProductId(productId);
+    setIsDeleteModalOpen(true);
+  };
+
+  const handleDeleteConfirm = async () => {
+    if (deleteProductId) {
+      try {
+        await dispatch(
+          removeProduct({ productId: deleteProductId, token })
+        ).unwrap();
+        toast.success("Product deleted successfully!");
+      } catch (error) {
+        toast.error(error || "Failed to delete product");
+      }
     }
+    setIsDeleteModalOpen(false);
   };
 
   // Handle edit button click
@@ -68,35 +116,40 @@ function ProductList() {
   };
 
   // Handle form submission in modal
-  const handleUpdateProduct = (e) => {
-    e.preventDefault();
-
+  const handleUpdateProduct = (data) => {
     if (!selectedProduct || !selectedProduct._id) {
       toast.error("No product selected or invalid product ID.");
       return;
     }
 
+    if (!token) {
+      toast.error("Authentication token missing. Please log in again.");
+      navigate("/login");
+      return;
+    }
+
     const updatedProduct = {
-      _id: selectedProduct._id, // Ensure this is not undefined
-      name: e.target.name.value,
-      category: e.target.category.value,
-      brandName: e.target.brand.value,
-      stock: parseInt(e.target.stock.value) || 0, // Default to 0 if NaN
-      price: parseFloat(e.target.price.value) || 0.0, // Default to 0.00 if NaN
+      name: data.name,
+      category: data.category,
+      brandName: data.brandName,
+      stock: parseInt(data.stock) || 0,
+      price: parseFloat(data.price) || 0.0,
     };
 
     dispatch(
       updateProduct({
         productId: selectedProduct._id,
         productData: updatedProduct,
+        token,
       })
     )
       .unwrap()
       .then(() => {
         toast.success("Product updated successfully!");
+        setIsModalOpen(false);
       })
       .catch((err) => {
-        toast.error(err.message || "Failed to update product");
+        toast.error(err || "Failed to update product");
       });
   };
   return (
@@ -258,11 +311,11 @@ function ProductList() {
                       />
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
-                   <Link to={`/product-details/${product._id}`}>
-                   <div className="text-sm font-medium text-gray-900">
-                        {product.name}
-                      </div>
-                   </Link>
+                      <Link to={`/product-details/${product._id}`}>
+                        <div className="text-sm font-medium text-gray-900">
+                          {product.name}
+                        </div>
+                      </Link>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="text-sm text-gray-500">
@@ -292,7 +345,7 @@ function ProductList() {
                         <PencilIcon className="w-5 h-5" />
                       </button>
                       <button
-                        onClick={() => handleDelete(product._id)}
+                        onClick={() => handleDeleteClick(product._id)}
                         className="text-red-600 hover:text-red-800"
                       >
                         <TrashIcon className="w-5 h-5" />
@@ -311,26 +364,40 @@ function ProductList() {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
           <div className="w-full max-w-md p-6 bg-white rounded-lg shadow-lg">
             <h2 className="mb-4 text-lg font-semibold">Edit Product</h2>
-            <form onSubmit={handleUpdateProduct} className="space-y-4">
+            <form
+              onSubmit={handleSubmit(handleUpdateProduct)}
+              className="space-y-4"
+            >
               <div>
                 <label className="block text-sm font-medium text-gray-700">
                   Product Name
                 </label>
                 <input
                   type="text"
-                  name="name"
-                  defaultValue={selectedProduct.name}
-                  className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-[#2196F3] focus:border-[#2196F3] sm:text-sm"
+                  {...register("name", {
+                    required: "Product name is required",
+                  })}
+                  className={`mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-[#2196F3] focus:border-[#2196F3] sm:text-sm ${
+                    errors.name ? "border-red-500" : ""
+                  }`}
                 />
+                {errors.name && (
+                  <p className="mt-1 text-sm text-red-500">
+                    {errors.name.message}
+                  </p>
+                )}
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700">
                   Category
                 </label>
                 <select
-                  name="category"
-                  defaultValue={selectedProduct.category}
-                  className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-[#2196F3] focus:border-[#2196F3] sm:text-sm rounded-md"
+                  {...register("category", {
+                    required: "Category is required",
+                  })}
+                  className={`mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-[#2196F3] focus:border-[#2196F3] sm:text-sm rounded-md ${
+                    errors.category ? "border-red-500" : ""
+                  }`}
                 >
                   <option value="">Select Category</option>
                   {categories.map((category) => (
@@ -339,15 +406,21 @@ function ProductList() {
                     </option>
                   ))}
                 </select>
+                {errors.category && (
+                  <p className="mt-1 text-sm text-red-500">
+                    {errors.category.message}
+                  </p>
+                )}
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700">
                   Brand
                 </label>
                 <select
-                  name="brand"
-                  defaultValue={selectedProduct.brandName}
-                  className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-[#2196F3] focus:border-[#2196F3] sm:text-sm rounded-md"
+                  {...register("brandName", { required: "Brand is required" })}
+                  className={`mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-[#2196F3] focus:border-[#2196F3] sm:text-sm rounded-md ${
+                    errors.brandName ? "border-red-500" : ""
+                  }`}
                 >
                   <option value="">Select Brand</option>
                   {brands.map((brand) => (
@@ -356,6 +429,11 @@ function ProductList() {
                     </option>
                   ))}
                 </select>
+                {errors.brandName && (
+                  <p className="mt-1 text-sm text-red-500">
+                    {errors.brandName.message}
+                  </p>
+                )}
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700">
@@ -363,10 +441,19 @@ function ProductList() {
                 </label>
                 <input
                   type="number"
-                  name="stock"
-                  defaultValue={selectedProduct.stock}
-                  className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-[#2196F3] focus:border-[#2196F3] sm:text-sm"
+                  {...register("stock", {
+                    required: "Stock is required",
+                    min: { value: 0, message: "Stock cannot be negative" },
+                  })}
+                  className={`mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-[#2196F3] focus:border-[#2196F3] sm:text-sm ${
+                    errors.stock ? "border-red-500" : ""
+                  }`}
                 />
+                {errors.stock && (
+                  <p className="mt-1 text-sm text-red-500">
+                    {errors.stock.message}
+                  </p>
+                )}
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700">
@@ -374,11 +461,20 @@ function ProductList() {
                 </label>
                 <input
                   type="number"
-                  name="price"
-                  defaultValue={selectedProduct.price}
                   step="0.01"
-                  className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-[#2196F3] focus:border-[#2196F3] sm:text-sm"
+                  {...register("price", {
+                    required: "Price is required",
+                    min: { value: 0, message: "Price cannot be negative" },
+                  })}
+                  className={`mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-[#2196F3] focus:border-[#2196F3] sm:text-sm ${
+                    errors.price ? "border-red-500" : ""
+                  }`}
                 />
+                {errors.price && (
+                  <p className="mt-1 text-sm text-red-500">
+                    {errors.price.message}
+                  </p>
+                )}
               </div>
               <div className="flex justify-end gap-4 mt-6">
                 <button
@@ -396,6 +492,34 @@ function ProductList() {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {isDeleteModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
+          <div className="w-full max-w-sm p-6 bg-white rounded-lg shadow-lg">
+            <h2 className="mb-4 text-lg font-semibold text-gray-800">
+              Confirm Deletion
+            </h2>
+            <p className="mb-6 text-sm text-gray-600">
+              Are you sure you want to delete this product? This action cannot
+              be undone.
+            </p>
+            <div className="flex justify-end gap-4">
+              <button
+                onClick={() => setIsDeleteModalOpen(false)}
+                className="inline-flex items-center px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md shadow-sm hover:bg-gray-50"
+              >
+                No, Cancel
+              </button>
+              <button
+                onClick={handleDeleteConfirm}
+                className="inline-flex items-center px-4 py-2 text-sm font-medium text-white bg-red-600 rounded-md shadow-sm hover:bg-red-700"
+              >
+                Yes, Delete
+              </button>
+            </div>
           </div>
         </div>
       )}

@@ -4,12 +4,20 @@ import { ArrowLeftIcon } from "lucide-react";
 import { useForm } from "react-hook-form";
 import { Link, useNavigate } from "react-router-dom";
 import { toast } from "react-toastify";
-import { useDispatch } from "react-redux";
+import { useDispatch, useSelector } from "react-redux";
 import { addProduct } from "../util/slices/productSlice";
 
 function CreateProduct() {
   const dispatch = useDispatch();
   const navigate = useNavigate();
+  const { user, token, isAuthenticated } = useSelector((state) => state.user);
+
+  // Redirect if not authenticated or not admin
+  if (!isAuthenticated || user?.role !== "admin") {
+    navigate("/login");
+    toast.error("You must be an admin to create products");
+    return null;
+  }
 
   const {
     register,
@@ -38,19 +46,19 @@ function CreateProduct() {
   });
 
   const categories = [
-    'Vitamins',
-    'Protein',
-    'Omega Fatty Acids',
-    'Performance',
-    'Minerals',
-    'Herbs',
-    'Supplements',
-    'Beauty & Personal Care',
-    'Medical Devices',
-    'Pain Relief',
-    'Skin Care',
-    'Pharmacy',
-    'Sexual Wellbeing',
+    "Vitamins",
+    "Protein",
+    "Omega Fatty Acids",
+    "Performance",
+    "Minerals",
+    "Herbs",
+    "Supplements",
+    "Beauty & Personal Care",
+    "Medical Devices",
+    "Pain Relief",
+    "Skin Care",
+    "Pharmacy",
+    "Sexual Wellbeing",
   ];
   const containerTypes = [
     "Glass Bottle",
@@ -91,11 +99,11 @@ function CreateProduct() {
         });
       }
 
-      await dispatch(addProduct(formData)).unwrap();
+      await dispatch(addProduct({ productData: formData, token })).unwrap();
       toast.success("Product created successfully!");
-      navigate("/products/create");
+      navigate("/products");
     } catch (error) {
-      console.error(error)
+      console.error(error);
       toast.error(error || "Failed to create product");
     }
   };
@@ -360,7 +368,6 @@ function CreateProduct() {
                 type="file"
                 id="brandLogo"
                 accept="image/jpeg,image/png,image/jpg"
-            
                 className={`mt-1 block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-medium file:bg-[#87CEEB] file:text-white hover:file:bg-[#2196F3] ${
                   errors.brandLogo ? "border-red-500" : ""
                 }`}

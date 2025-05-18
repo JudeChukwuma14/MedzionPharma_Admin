@@ -1,5 +1,5 @@
 import { createAsyncThunk, createSlice } from "@reduxjs/toolkit";
-import { api } from "../../services/productApi";
+import { api, createProduct, deleteProduct, productUpdate } from "../../services/productApi";
 
 export const fetchProducts = createAsyncThunk(
   "product/fetchAll",
@@ -29,12 +29,12 @@ export const fetchProductById = createAsyncThunk(
 
 export const addProduct = createAsyncThunk(
   "product/create",
-  async (productData, { rejectWithValue }) => {
+  async ({ productData, token }, { rejectWithValue }) => {
     try {
-      const response = await api.post("/postproduct", productData);
-      return response.data.product;
+      const response = await createProduct(productData, token);
+      return response.product;
     } catch (error) {
-      const errorMessage = error.response?.data?.message || error.message || "Failed to create product";
+      const errorMessage = error.response?.data?.message || "Failed to create product";
       return rejectWithValue(errorMessage);
     }
   }
@@ -42,10 +42,10 @@ export const addProduct = createAsyncThunk(
 
 export const removeProduct = createAsyncThunk(
   "product/delete",
-  async (productId, { rejectWithValue }) => {
+  async({productId, token},{rejectWithValue})=>{
     try {
-      await api.delete(`/${productId}`);
-      return productId; // Return productId to remove it from state
+      await deleteProduct(productId, token);
+      return productId;
     } catch (error) {
       const errorMessage = error.response?.data?.message || error.message || "Failed to delete product";
       return rejectWithValue(errorMessage);
@@ -54,14 +54,18 @@ export const removeProduct = createAsyncThunk(
 );
 
 export const updateProduct = createAsyncThunk(
-  "product/update",
-  async ({ productId, productData }, { rejectWithValue }) => {
+  "product/update", // Changed from "products/update" to match state.product
+  async ({ productId, productData, token }, { rejectWithValue }) => {
     try {
-      const response = await api.put(`/${productId}`, productData);
-      return response.data.product;
+      const response = await productUpdate(productId, productData, token);
+      if (!response?.product) {
+        console.warn("Update response missing product:", response);
+        throw new Error("No product data in response");
+      }
+      return response.product;
     } catch (error) {
-      const errorMessage = error.response?.data?.message || error.message || "Failed to update product";
-      return rejectWithValue(errorMessage);
+      console.error("Update thunk error:", error.response?.data || error.message);
+      return rejectWithValue(error.response?.data?.message || error.message || "Failed to update product");
     }
   }
 );
