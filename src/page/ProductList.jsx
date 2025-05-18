@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { FilterIcon, PencilIcon, PlusIcon, TrashIcon } from "lucide-react";
 import { useDispatch, useSelector } from "react-redux";
 import { toast } from "react-toastify";
@@ -13,6 +13,7 @@ import { useForm } from "react-hook-form";
 
 function ProductList() {
   const dispatch = useDispatch();
+  const navigate = useNavigate();
   const { products, loading, error, success } = useSelector(
     (state) => state.product
   );
