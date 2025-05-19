@@ -5,7 +5,7 @@ import { logout } from "../util/slices/userSlices";
 
 
 export const api = axios.create({
-    baseURL: "/api/v1/auth",
+    baseURL: "https://medzionpharmaapi.onrender.com/api/v1/auth",
 })
 
 api.interceptors.response.use(

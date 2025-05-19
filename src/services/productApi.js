@@ -1,6 +1,6 @@
 // frontend/src/services/productApi.js
 import axios from "axios";
-const API_BASE_URL = "/api/v1/product";
+const API_BASE_URL = "https://medzionpharmaapi.onrender.com/api/v1/product";
 export const api = axios.create({
   baseURL: API_BASE_URL,
 });
