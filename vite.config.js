@@ -9,6 +9,7 @@ export default defineConfig({
       "/api": {
         target: "https://medzionpharmaapi.onrender.com",
         changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/api/, "")
       },
     },
   },

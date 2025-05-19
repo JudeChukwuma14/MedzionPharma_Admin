@@ -1,18 +1,33 @@
 import axios from "axios";
+import { logout } from "../util/slices/userSlices";
 
 
-const API_BASE_URL = "/api/v1/auth"
+
 
 export const api = axios.create({
-    baseURL: API_BASE_URL,
+    baseURL: "/api/v1/auth",
 })
 
+api.interceptors.response.use(
+    (response) => response,
+    (error) => {
+        if (error.response?.status === 401) {
+            store.dispatch(logout());
+            window.location.href = "/login";
+        }
+        return Promise.reject(error);
+    }
+);
 export const createAccount = async (data) => {
     try {
         const response = await api.post("/register", data)
         return response.data
     } catch (error) {
-        console.error("Error creating account", error)
+        console.error("Login error:", {
+            status: error.response?.status,
+            data: error.response?.data,
+            message: error.message,
+        });
         const errorMessage = error.response?.data?.message || error.message || "Failed to createAccount"
         throw new Error(errorMessage)
     }
@@ -27,7 +42,7 @@ export const loginAccount = async (data) => {
         throw new Error(errorMessage)
     }
 }
-export const Logout = async()=>{
+export const Logout = async () => {
     try {
         const response = await api.get("/logout")
         return response.data
@@ -35,8 +50,8 @@ export const Logout = async()=>{
         console.error("Error logging out account", error)
         const errorMessage = error.response?.data?.message || error.message || "Failed to logout"
         throw new Error(errorMessage)
-    }  
-} 
+    }
+}
 export const meAccount = async () => {
     try {
         const response = await api.get("/me")
