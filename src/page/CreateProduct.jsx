@@ -202,7 +202,7 @@ function CreateProduct() {
               </label>
               <div className="relative mt-1 rounded-md shadow-sm">
                 <div className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
-                  <span className="text-gray-500 sm:text-sm">$</span>
+                  <span className="text-gray-500 sm:text-sm">₦</span>
                 </div>
                 <input
                   type="number"
@@ -234,7 +234,7 @@ function CreateProduct() {
               </label>
               <div className="relative mt-1 rounded-md shadow-sm">
                 <div className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
-                  <span className="text-gray-500 sm:text-sm">$</span>
+                  <span className="text-gray-500 sm:text-sm">₦</span>
                 </div>
                 <input
                   type="number"
